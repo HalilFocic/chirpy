@@ -3,8 +3,6 @@ package database
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"os"
 	"sync"
 )
@@ -15,10 +13,15 @@ type DB struct {
 }
 type DbStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
+	Users  map[int]User  `json:"users"`
 }
 type Chirp struct {
 	Id   int    `json:"id"`
 	Body string `json:"body"`
+}
+type User struct {
+	Id    int    `json:"id"`
+	Email string `json:"email"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -45,8 +48,7 @@ func (db *DB) GetChrips() ([]Chirp, error) {
 func (db *DB) CreateChirp(body string) (Chirp, error) {
 	dbStruct, err := db.loadDB()
 	if err != nil {
-		fmt.Println("Error loading db")
-		return Chirp{}, nil
+		return Chirp{}, err
 	}
 	id := len(dbStruct.Chirps) + 1
 	c := Chirp{
@@ -56,7 +58,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	dbStruct.Chirps[id] = c
 	err = db.writeDB(dbStruct)
 	if err != nil {
-		return Chirp{}, nil
+		return Chirp{}, err
 	}
 	return c, nil
 
@@ -90,8 +92,8 @@ func (db *DB) loadDB() (DbStructure, error) {
 
 }
 func (db *DB) writeDB(dbStuct DbStructure) error {
-    db.mux.Lock()
-    defer db.mux.Unlock()
+	db.mux.Lock()
+	defer db.mux.Unlock()
 
 	dat, err := json.Marshal(dbStuct)
 	if err != nil {
@@ -103,4 +105,48 @@ func (db *DB) writeDB(dbStuct DbStructure) error {
 	}
 	return nil
 
+}
+
+func (db *DB) GetChirpById(id int) (Chirp, error) {
+	dbStruct, err := db.loadDB()
+	if err != nil {
+		return Chirp{}, err
+	}
+	val, ok := dbStruct.Chirps[id]
+	if !ok {
+		return Chirp{}, errors.New("Chirp with that id was not found")
+	}
+	return val, nil
+
+}
+
+func (db *DB) CreateUser(email string) (User, error) {
+	dbStruct, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+	id := len(dbStruct.Users) + 1
+	c := User{
+		id,
+		email,
+	}
+	dbStruct.Users[id] = c
+	err = db.writeDB(dbStruct)
+	if err != nil {
+		return User{}, err
+	}
+	return c, nil
+
+}
+func (db *DB) GetUsers() ([]User, error) {
+	dbStruct, err := db.loadDB()
+	if err != nil {
+		return []User{}, err
+	}
+
+	users := make([]User, 0, len(dbStruct.Users))
+	for _, u := range dbStruct.Users {
+		users = append(users, u)
+	}
+	return users, nil
 }

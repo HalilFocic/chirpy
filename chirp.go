@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/HalilFocic/chirpy/internal/database"
 	"log"
 	"net/http"
 	"sort"
+	"strconv"
+
+	"github.com/HalilFocic/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handleAddChirp(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +56,23 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(chirps, func(i, j int) bool {
 		return chirps[i].Id < chirps[j].Id
 	})
-	respondWithJSON(w, http.StatusOK, dbChirps)
+	respondWithJSON(w, http.StatusOK, chirps)
+
+}
+func (cfg *apiConfig) handleGetChirpById(w http.ResponseWriter, r *http.Request) {
+	pathId := r.PathValue("id")
+	id, err := strconv.Atoi(pathId)
+
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid id was passed to request")
+		return
+	}
+
+	chirp, err := cfg.DB.GetChirpById(id)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Chirp with that id doesnt exist")
+		return
+	}
+	respondWithJSON(w, http.StatusOK, chirp)
 
 }
