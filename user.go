@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 
@@ -29,7 +30,8 @@ func (cfg *apiConfig) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 type userBody struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, r *http.Request) {
@@ -40,8 +42,9 @@ func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "Error while decoding body")
 		return
 	}
-	u, err := cfg.DB.CreateUser(params.Email)
+	u, err := cfg.DB.CreateUser(params.Email, params.Password)
 	if err != nil {
+		fmt.Println(err)
 		respondWithError(w, http.StatusBadRequest, "Couldnt create user")
 		return
 	}
