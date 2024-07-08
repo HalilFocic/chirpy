@@ -1,0 +1,60 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/HalilFocic/chirpy/internal/database"
+	"log"
+	"net/http"
+	"sort"
+)
+
+func (cfg *apiConfig) handleAddChirp(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		log.Printf("Error decoding parameters: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	if len(params.Body) > 140 {
+		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
+		return
+
+	}
+	cleanedMessage := BadWorkReplacement(params.Body)
+
+	c, err := cfg.DB.CreateChirp(cleanedMessage)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error while creating chips")
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, database.Chirp{
+		Id:   c.Id,
+		Body: c.Body,
+	})
+
+}
+
+func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
+	dbChirps, err := cfg.DB.GetChrips()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldnt retrieve chips!")
+		return
+	}
+	chirps := []database.Chirp{}
+
+	for _, dbChirp := range dbChirps {
+		chirps = append(chirps, database.Chirp{
+			Id:   dbChirp.Id,
+			Body: dbChirp.Body,
+		})
+	}
+	sort.Slice(chirps, func(i, j int) bool {
+		return chirps[i].Id < chirps[j].Id
+	})
+	respondWithJSON(w, http.StatusOK, dbChirps)
+
+}
