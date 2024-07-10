@@ -2,19 +2,25 @@ package main
 
 import (
 	"fmt"
-	"github.com/HalilFocic/chirpy/internal/database"
 	"log"
 	"net/http"
+	"os"
+
+	"github.com/HalilFocic/chirpy/internal/database"
+	"github.com/joho/godotenv"
 )
 
 type apiConfig struct {
 	fileserverHits int
 	DB             *database.DB
+	jwtSecret      string
 }
 
 func main() {
 	const port = "8080"
 
+	err := godotenv.Load()
+	fmt.Printf("Key iz env je %s \n", os.Getenv("JWT_SECRET"))
 	db, err := database.NewDB("database.json")
 	if err != nil {
 		log.Fatal(err)
@@ -22,6 +28,7 @@ func main() {
 	apiConfig := &apiConfig{
 		fileserverHits: 0,
 		DB:             db,
+		jwtSecret:      os.Getenv("JWT_SECRET"),
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/app/*", apiConfig.middlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(".")))))
@@ -34,7 +41,10 @@ func main() {
 	mux.HandleFunc("GET /api/chirps/{id}", apiConfig.handleGetChirpById)
 	mux.HandleFunc("GET /api/users", apiConfig.handleGetUsers)
 	mux.HandleFunc("POST /api/users", apiConfig.handleAddUser)
+	mux.HandleFunc("PUT /api/users", apiConfig.handleUpateUser)
 	mux.HandleFunc("POST /api/login", apiConfig.handleLogin)
+	mux.HandleFunc("POST /api/refresh", apiConfig.handleRefreshToken)
+	mux.HandleFunc("POST /api/revoke", apiConfig.handleRevokeToken)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
